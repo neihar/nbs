@@ -56,6 +56,8 @@ NProto::TCreateSessionResponse TLocalFileSystem::CreateSession(
         clientId,
         Config->GetMaxNodeCount(),
         Config->GetMaxHandlePerSessionCount(),
+        Config->GetOpenNodeByHandleEnabled(),
+        Config->GetNodeCleanupBatchSize(),
         Logging);
 
     session->Init(request.GetRestoreClientSession());
