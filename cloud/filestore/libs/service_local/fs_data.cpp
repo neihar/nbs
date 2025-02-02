@@ -94,6 +94,41 @@ NProto::TDestroyHandleResponse TLocalFileSystem::DestroyHandle(
     return {};
 }
 
+TFuture<NProto::TReadDataResponse>
+TLocalFileSystem::ReadDataAsyncUsingFuseBuffers(
+    NProto::TReadDataRequest& request,
+    NProto::TProfileLogRequestInfo& logRequest,
+    TFileHandle* handle)
+{
+    TVector<TArrayRef<char>> buffers;
+    for (const auto& fuseBuf: request.GetFuseBufers()) {
+        buffers.emplace_back(
+            reinterpret_cast<char*>(fuseBuf.GetAddress()),
+            fuseBuf.GetSize());
+    }
+
+    auto promise = NewPromise<NProto::TReadDataResponse>();
+    FileIOService->AsyncReadV(*handle, request.GetOffset(), std::move(buffers))
+        .Subscribe(
+            [&logRequest, promise](const TFuture<ui32>& f) mutable
+            {
+                NProto::TReadDataResponse response;
+                try {
+                    auto bytesRead = f.GetValue();
+                    response.SetFuseBuffersReadBytes(bytesRead);
+                } catch (const TServiceError& e) {
+                    *response.MutableError() = MakeError(MAKE_FILESTORE_ERROR(
+                        ErrnoToFileStoreError(STATUS_FROM_CODE(e.GetCode()))));
+                } catch (...) {
+                    *response.MutableError() =
+                        MakeError(E_IO, CurrentExceptionMessage());
+                }
+                FinalizeProfileLogRequestInfo(logRequest, response);
+                promise.SetValue(std::move(response));
+            });
+    return promise;
+}
+
 TFuture<NProto::TReadDataResponse> TLocalFileSystem::ReadDataAsync(
     NProto::TReadDataRequest& request,
     NProto::TProfileLogRequestInfo& logRequest)
@@ -105,6 +140,10 @@ TFuture<NProto::TReadDataResponse> TLocalFileSystem::ReadDataAsync(
     if (!handle || !handle->IsOpen()) {
         return MakeFuture<NProto::TReadDataResponse>(
             TErrorResponse(ErrorInvalidHandle(request.GetHandle())));
+    }
+
+    if (request.FuseBufersSize() > 0) {
+        return ReadDataAsyncUsingFuseBuffers(request, logRequest, handle);
     }
 
     auto align = Config->GetDirectIoEnabled() ? Config->GetDirectIoAlign() : 0;
@@ -134,6 +173,40 @@ TFuture<NProto::TReadDataResponse> TLocalFileSystem::ReadDataAsync(
     return promise;
 }
 
+TFuture<NProto::TWriteDataResponse>
+TLocalFileSystem::WriteDataAsyncUsingFuseBuffers(
+    NProto::TWriteDataRequest& request,
+    NProto::TProfileLogRequestInfo& logRequest,
+    TFileHandle* handle)
+{
+    TVector<TArrayRef<const char>> buffers;
+    for (const auto& fuseBuf: request.GetFuseBufers()) {
+        buffers.emplace_back(
+            reinterpret_cast<const char*>(fuseBuf.GetAddress()),
+            fuseBuf.GetSize());
+    }
+
+    auto promise = NewPromise<NProto::TWriteDataResponse>();
+    FileIOService->AsyncWriteV(*handle, request.GetOffset(), std::move(buffers))
+        .Subscribe(
+            [&logRequest, promise](const TFuture<ui32>& f) mutable
+            {
+                NProto::TWriteDataResponse response;
+                try {
+                    f.GetValue();
+                } catch (const TServiceError& e) {
+                    *response.MutableError() = MakeError(MAKE_FILESTORE_ERROR(
+                        ErrnoToFileStoreError(STATUS_FROM_CODE(e.GetCode()))));
+                } catch (...) {
+                    *response.MutableError() =
+                        MakeError(E_IO, CurrentExceptionMessage());
+                }
+                FinalizeProfileLogRequestInfo(logRequest, response);
+                promise.SetValue(std::move(response));
+            });
+    return promise;
+}
+
 TFuture<NProto::TWriteDataResponse> TLocalFileSystem::WriteDataAsync(
     NProto::TWriteDataRequest& request,
     NProto::TProfileLogRequestInfo& logRequest)
@@ -145,6 +218,10 @@ TFuture<NProto::TWriteDataResponse> TLocalFileSystem::WriteDataAsync(
     if (!handle || !handle->IsOpen()) {
         return MakeFuture<NProto::TWriteDataResponse>(
             TErrorResponse(ErrorInvalidHandle(request.GetHandle())));
+    }
+
+    if (request.FuseBufersSize() > 0) {
+        return WriteDataAsyncUsingFuseBuffers(request, logRequest, handle);
     }
 
     auto b = std::move(*request.MutableBuffer());
