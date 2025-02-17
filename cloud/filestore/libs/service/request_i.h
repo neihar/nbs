@@ -17,10 +17,52 @@
 #include <cloud/filestore/public/api/protos/ping.pb.h>
 #include <cloud/filestore/public/api/protos/session.pb.h>
 
+#include <cloud/storage/core/libs/common/sglist.h>
 #include <cloud/storage/core/protos/media.pb.h>
 #include <cloud/storage/core/protos/request_source.pb.h>
 
 namespace NCloud::NFileStore {
+
+namespace NProto {
+
+////////////////////////////////////////////////////////////////////////////////
+
+struct TReadDataLocalRequest
+    : public TReadDataRequest
+{
+    TSgList Sglist;
+};
+
+struct TReadDataLocalResponse
+    : public TReadDataResponse
+{
+    TReadDataLocalResponse() = default;
+
+    TReadDataLocalResponse(const TReadDataResponse& base)
+        : TReadDataResponse(base)
+    {
+    }
+    TReadDataLocalResponse(TReadDataResponse&& base)
+        : TReadDataResponse(std::move(base))
+    {
+    }
+
+    // number of bytes read
+    ui64 Length = 0;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
+struct TWriteDataLocalRequest
+    : public TWriteDataRequest
+{
+    TSgList Sglist;
+    ui64 Length = 0;
+};
+
+using TWriteDataLocalResponse = TWriteDataResponse;
+
+}   // namespace NProto
 
 namespace NImpl {
 
@@ -64,6 +106,18 @@ struct TFileStoreRequest {};
 FILESTORE_PROTO_REQUESTS(FILESTORE_DECLARE_REQUEST)
 
 #undef FILESTORE_DECLARE_REQUEST
+
+    template <>
+    struct TFileStoreRequest<NProto::TReadDataLocalRequest>
+    {
+        static constexpr EFileStoreRequest Request = EFileStoreRequest::ReadData;
+    };
+
+    template <>
+    struct TFileStoreRequest<NProto::TWriteDataLocalRequest>
+    {
+        static constexpr EFileStoreRequest Request = EFileStoreRequest::WriteData;
+    };
 
 }    // namespace NImpl
 

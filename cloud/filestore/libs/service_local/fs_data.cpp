@@ -129,6 +129,14 @@ TLocalFileSystem::ReadDataAsyncUsingFuseBuffers(
     return promise;
 }
 
+TFuture<NProto::TReadDataLocalResponse> TLocalFileSystem::ReadDataLocalAsync(
+    NProto::TReadDataLocalRequest& request,
+    NProto::TProfileLogRequestInfo& logRequest)
+{
+    Y_UNUSED(request, logRequest);
+    return MakeFuture<NProto::TReadDataLocalResponse>({});
+}
+
 TFuture<NProto::TReadDataResponse> TLocalFileSystem::ReadDataAsync(
     NProto::TReadDataRequest& request,
     NProto::TProfileLogRequestInfo& logRequest)
@@ -216,6 +224,14 @@ TLocalFileSystem::WriteDataAsyncUsingFuseBuffers(
                 promise.SetValue(std::move(response));
             });
     return promise;
+}
+
+TFuture<NProto::TWriteDataLocalResponse> TLocalFileSystem::WriteDataLocalAsync(
+    NProto::TWriteDataLocalRequest& request,
+    NProto::TProfileLogRequestInfo& logRequest)
+{
+    Y_UNUSED(request, logRequest);
+    return MakeFuture<NProto::TWriteDataLocalResponse>({});
 }
 
 TFuture<NProto::TWriteDataResponse> TLocalFileSystem::WriteDataAsync(
