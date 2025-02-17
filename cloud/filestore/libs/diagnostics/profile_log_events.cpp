@@ -237,12 +237,7 @@ void InitProfileLogRequestInfo(
     rangeInfo->SetNodeId(request.GetNodeId());
     rangeInfo->SetHandle(request.GetHandle());
     rangeInfo->SetOffset(request.GetOffset());
-    if (request.FuseBufersSize() > 0) {
-        rangeInfo->SetBytes(request.GetFuseBuffersWriteBytes());
-    } else {
-        rangeInfo->SetBytes(request.GetBuffer().size());
-    }
-
+    rangeInfo->SetBytes(request.GetBuffer().size());
 }
 
 template <>
@@ -652,11 +647,19 @@ void FinalizeProfileLogRequestInfo(
         profileLogRequest.AddRanges();
     }
     auto* rangeInfo = profileLogRequest.MutableRanges(0);
-    if (response.GetFuseBuffersReadBytes()) {
-        rangeInfo->SetActualBytes(response.GetFuseBuffersReadBytes());
-    } else {
-        rangeInfo->SetActualBytes(response.GetBuffer().size());
+    rangeInfo->SetActualBytes(response.GetBuffer().size());
+}
+
+template <>
+void FinalizeProfileLogRequestInfo(
+    NProto::TProfileLogRequestInfo& profileLogRequest,
+    const NProto::TReadDataLocalResponse& response)
+{
+    if (profileLogRequest.RangesSize() == 0) {
+        profileLogRequest.AddRanges();
     }
+    auto* rangeInfo = profileLogRequest.MutableRanges(0);
+    rangeInfo->SetActualBytes(response.Length);
 }
 
 }   // namespace NCloud::NFileStore
