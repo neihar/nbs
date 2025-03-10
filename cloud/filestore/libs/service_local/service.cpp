@@ -251,9 +251,7 @@ public:
         std::shared_ptr<NProto::T##name##Request> request) override            \
     {                                                                          \
         Y_UNUSED(callContext);                                                 \
-        return TaskQueue->Execute([this, request = std::move(request)] {       \
             return ExecuteWithProfileLogAsync<T##name##Method>(*request);      \
-        });                                                                    \
     }                                                                          \
 // FILESTORE_IMPLEMENT_METHOD_ASYNC
 
