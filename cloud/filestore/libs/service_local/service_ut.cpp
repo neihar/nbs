@@ -19,6 +19,7 @@
 
 #include <util/folder/path.h>
 #include <util/random/random.h>
+#include <util/string/split.h>
 
 #include <algorithm>
 
@@ -351,9 +352,17 @@ struct TTestBootstrap
         );
         Store->Start();
 
+        TString fsId;
+        TString aliasId;
+        StringSplitter(id).Split('#').TryCollectInto(&fsId, &aliasId);
+
+        if (aliasId) {
+            Cwd->Child(aliasId).MkDir();
+        }
+
         CreateFileStore(id, "cloud", "folder", 100500, 500100);
         if (client) {
-            Headers.SessionId = CreateSession(id, client, session).GetSession().GetSessionId();
+            Headers.SessionId = CreateSession(fsId, client, session).GetSession().GetSessionId();
         }
     }
 
@@ -953,6 +962,29 @@ Y_UNIT_TEST_SUITE(LocalFileStore)
         UNIT_ASSERT_VALUES_EQUAL(store.GetBlocksCount(), 500100);
     }
 
+    Y_UNIT_TEST(ShouldCreateStoreWithAliasPath)
+    {
+        TTestBootstrap bootstrap;
+
+        auto aliasFs = bootstrap.Cwd->Child("aliasFs");
+        aliasFs.MkDir();
+
+        bootstrap.CreateFileStore("fs#aliasFs", "cloud", "folder", 100500, 500100);
+        auto response = bootstrap.GetFileStoreInfo("fs");
+
+        const auto& store = response.GetFileStore();
+        UNIT_ASSERT_VALUES_EQUAL(store.GetFileSystemId(), "fs");
+        UNIT_ASSERT_VALUES_EQUAL(store.GetCloudId(), "cloud");
+        UNIT_ASSERT_VALUES_EQUAL(store.GetFolderId(), "folder");
+        UNIT_ASSERT_VALUES_EQUAL(store.GetBlockSize(), 100500);
+        UNIT_ASSERT_VALUES_EQUAL(store.GetBlocksCount(), 500100);
+
+        auto rootDir = bootstrap.Cwd->Child("nfs_fs");
+        UNIT_ASSERT(rootDir.Exists());
+        UNIT_ASSERT(rootDir.IsSymlink());
+        UNIT_ASSERT_VALUES_EQUAL(rootDir.RealPath(), aliasFs.RealPath());
+    }
+
     Y_UNIT_TEST(ShouldListExternallyCreatedFilestores)
     {
         TTestBootstrap bootstrapExt;
@@ -1466,9 +1498,9 @@ Y_UNIT_TEST_SUITE(LocalFileStore)
         UNIT_ASSERT_VALUES_EQUAL(nodes[0], "file");
     }
 
-    Y_UNIT_TEST(ShouldReadAndWriteData)
+    void CheckReadAndWriteData(const TString& fsId)
     {
-        TTestBootstrap bootstrap("fs");
+        TTestBootstrap bootstrap(fsId);
 
         ui64 handle = bootstrap.CreateHandle(RootNodeId, "file", TCreateHandleArgs::CREATE).GetHandle();
         auto data = bootstrap.ReadData(handle, 0, 100).GetBuffer();
@@ -1485,6 +1517,16 @@ Y_UNIT_TEST_SUITE(LocalFileStore)
 
         buffer = bootstrap.ReadData(handle, 4, 4).GetBuffer();
         UNIT_ASSERT_VALUES_EQUAL(buffer, "bbbb");
+    }
+
+    Y_UNIT_TEST(ShouldReadAndWriteData)
+    {
+        CheckReadAndWriteData("fs");
+    }
+
+    Y_UNIT_TEST(ShouldReadAndWriteDataWithAliasPath)
+    {
+        CheckReadAndWriteData("fs#aliasFs");
     }
 
     Y_UNIT_TEST(ShouldAllocateData)

@@ -21,6 +21,7 @@
 #include <util/generic/vector.h>
 #include <util/stream/file.h>
 #include <util/string/builder.h>
+#include <util/string/split.h>
 #include <util/system/rwlock.h>
 
 #include <google/protobuf/util/message_differencer.h>
@@ -42,11 +43,21 @@ TFsPath Concat(const TFsPath& lhs, const TFsPath& rhs)
     return l.Reconstruct();
 }
 
+std::pair<TString, TString> ParseFileSystemId(const TString& id)
+{
+    TString fsId;
+    TString aliasId;
+    StringSplitter(id).Split('#').TryCollectInto(&fsId, &aliasId);
+
+    return {fsId, aliasId};
+}
+
 void CreateRequestToFileStore(
     const NProto::TCreateFileStoreRequest& request,
     NProto::TFileStore& store)
 {
-    store.SetFileSystemId(GetFileSystemId(request));
+    const auto& [fsId, _] = ParseFileSystemId(GetFileSystemId(request));
+    store.SetFileSystemId(fsId);
 
     store.SetProjectId(request.GetProjectId());
     store.SetFolderId(request.GetFolderId());
@@ -558,17 +569,19 @@ NProto::TCreateFileStoreResponse TLocalFileStore::CreateFileStore(
 {
     STORAGE_INFO("CreateFileStore " << DumpMessage(request));
 
-    const auto& id = GetFileSystemId(request);
-    if (!id) {
+    const auto& encodedId = GetFileSystemId(request);
+    if (!encodedId) {
         return TErrorResponse(E_ARGUMENT, "invalid file system identifier");
     }
+
+    const auto& [fsId, aliasId] = ParseFileSystemId(encodedId);
 
     TWriteGuard guard(Lock);
 
     NProto::TFileStore store;
     CreateRequestToFileStore(request, store);
 
-    auto it = FileSystems.find(id);
+    auto it = FileSystems.find(fsId);
     if (it != FileSystems.end()) {
         ui32 errorCode = S_ALREADY;
 
@@ -580,17 +593,35 @@ NProto::TCreateFileStoreResponse TLocalFileStore::CreateFileStore(
         }
 
         return TErrorResponse(errorCode, TStringBuilder()
-            << "local filestore already exists: " << id.Quote());
+            << "local filestore already exists: " << fsId.Quote());
     }
 
-    auto fsPaths = GetPaths(id);
+    auto fsPaths = GetPaths(fsId);
 
     SaveFileStoreProto(fsPaths.MetaPath, store);
 
-    fsPaths.RootPath.MkDir(static_cast<int>(Config->GetDefaultPermissions()));
+    if (aliasId) {
+        auto aliasRootPath = fsPaths.RootPath.Parent() / aliasId;
+        if (!aliasRootPath.Exists() || !aliasRootPath.IsDirectory()) {
+            return TErrorResponse(E_FAIL, TStringBuilder()
+                << "Missing alias root path " << aliasRootPath.GetPath());
+        }
+
+        if (!NFs::SymLink(aliasId, fsPaths.RootPath.GetPath())) {
+            return TErrorResponse(
+                E_FAIL,
+                TStringBuilder()
+                    << "Failed to create root path "
+                    << fsPaths.RootPath.GetPath() << "as symlink to " << fsId);
+        }
+    } else {
+        fsPaths.RootPath.MkDir(
+            static_cast<int>(Config->GetDefaultPermissions()));
+    }
+
     fsPaths.StatePath.MkDir(static_cast<int>(Config->GetDefaultPermissions()));
 
-    InitFileSystem(id, fsPaths.RootPath, fsPaths.StatePath, store);
+    InitFileSystem(fsId, fsPaths.RootPath, fsPaths.StatePath, store);
 
     NProto::TCreateFileStoreResponse response;
     response.MutableFileStore()->Swap(&store);
