@@ -118,12 +118,13 @@ type nodeService struct {
 	targetBlkPathRegexp *regexp.Regexp
 	localFsOverrides    LocalFilestoreOverrideMap
 
-	nbsClient      nbsclient.ClientIface
-	nfsClient      nfsclient.EndpointClientIface
-	nfsLocalClient nfsclient.EndpointClientIface
-	mounter        mounter.Interface
-	volumeOps      *sync.Map
-	mountOptions   []string
+	nbsClient               nbsclient.ClientIface
+	nfsClient               nfsclient.EndpointClientIface
+	nfsLocalClient          nfsclient.EndpointClientIface
+	nfsLocalFilestoreClient nfsclient.ClientIface
+	mounter                 mounter.Interface
+	volumeOps               *sync.Map
+	mountOptions            []string
 
 	useDiscardForYDBBasedDisks bool
 }
@@ -139,6 +140,7 @@ func newNodeService(
 	nbsClient nbsclient.ClientIface,
 	nfsClient nfsclient.EndpointClientIface,
 	nfsLocalClient nfsclient.EndpointClientIface,
+	nfsLocalFilestoreClient nfsclient.ClientIface,
 	mounter mounter.Interface,
 	mountOptions []string,
 	useDiscardForYDBBasedDisks bool) csi.NodeServer {
@@ -151,6 +153,7 @@ func newNodeService(
 		nbsClient:                  nbsClient,
 		nfsClient:                  nfsClient,
 		nfsLocalClient:             nfsLocalClient,
+		nfsLocalFilestoreClient:    nfsLocalFilestoreClient,
 		mounter:                    mounter,
 		targetFsPathRegexp:         regexp.MustCompile(targetFsPathPattern),
 		targetBlkPathRegexp:        regexp.MustCompile(targetBlkPathPattern),
@@ -225,17 +228,21 @@ func (s *nodeService) NodeStageVolume(
 				if nfsBackend {
 					backend = "nfs"
 				}
+
+				localFsArgs := ParseLocalFsArgs(req.VolumeContext)
+
 				if err = s.writeStageData(stageRecordPath, &StageData{
 					Backend:       backend,
 					InstanceId:    instanceId,
 					RealStagePath: s.getEndpointDir(instanceId, nbsId),
+					IsLocalFs:     localFsArgs != nil,
 				}); err != nil {
 					return nil, s.statusErrorf(codes.Internal,
 						"Failed to write stage record: %v", err)
 				}
 
 				if nfsBackend {
-					err = s.nodeStageFileStoreAsVhostSocket(ctx, instanceId, nbsId)
+					err = s.nodeStageFileStoreAsVhostSocket(ctx, instanceId, nbsId, localFsArgs)
 				} else {
 					err = s.nodeStageDiskAsVhostSocket(ctx, instanceId, nbsId, req.VolumeContext)
 				}
@@ -530,10 +537,36 @@ func (s *nodeService) nodePublishDiskAsVhostSocket(
 	return s.mountSocketDir(endpointDir, req)
 }
 
+type LocalFsArgs struct {
+	Type     string
+	Size     uint64
+	ParentId string
+}
+
+func ParseLocalFsArgs(volumeContext map[string]string) *LocalFsArgs {
+	args := &LocalFsArgs{
+		Type:     volumeContext["localFsType"],
+		ParentId: volumeContext["localFsParentId"],
+	}
+
+	if args.Type == "" {
+		return nil
+	}
+
+	size, err := strconv.ParseUint(volumeContext["localFsSize"], 10, 64)
+	if err != nil {
+		return nil
+	}
+
+	args.Size = size
+	return args
+}
+
 type StageData struct {
 	Backend       string `json:"backend"`
 	InstanceId    string `json:"instanceId"`
 	RealStagePath string `json:"realStagePath"`
+	IsLocalFs     bool   `json:"isLocalFs"`
 }
 
 func (s *nodeService) writeStageData(path string, data *StageData) error {
@@ -912,9 +945,10 @@ func (s *nodeService) nodePublishFileStoreAsVhostSocket(
 func (s *nodeService) nodeStageFileStoreAsVhostSocket(
 	ctx context.Context,
 	instanceId string,
-	filesystemId string) error {
+	filesystemId string,
+	localFsArgs *LocalFsArgs) error {
 
-	log.Printf("csi.nodeStageFileStoreAsVhostSocket: %s %s", instanceId, filesystemId)
+	log.Printf("csi.nodeStageFileStoreAsVhostSocket: %s %s %+v", instanceId, filesystemId, localFsArgs)
 
 	endpointDir := s.getEndpointDir(instanceId, filesystemId)
 	if err := os.MkdirAll(endpointDir, os.FileMode(0755)); err != nil {
@@ -927,23 +961,63 @@ func (s *nodeService) nodeStageFileStoreAsVhostSocket(
 		return fmt.Errorf("NFS client wasn't created")
 	}
 
-	_, err := nfsClient.StartEndpoint(ctx, &nfsapi.TStartEndpointRequest{
-		Endpoint: &nfsapi.TEndpointConfig{
-			SocketPath:       filepath.Join(endpointDir, nfsSocketName),
-			FileSystemId:     filesystemId,
-			ClientId:         fmt.Sprintf("%s-%s", s.clientId, instanceId),
-			VhostQueuesCount: 8,
-			Persistent:       true,
-		},
-	})
-	if err != nil {
-		if s.IsGrpcTimeoutError(err, true /* nfs */) {
-			nfsClient.StopEndpoint(ctx, &nfsapi.TStopEndpointRequest{
-				SocketPath: filepath.Join(endpointDir, nfsSocketName),
-			})
+	if localFsArgs != nil && s.nfsLocalClient != nil && s.nfsLocalFilestoreClient != nil {
+		localFsId := fmt.Sprintf("%s-%s", filesystemId, instanceId)
+		localFsAliasId := filesystemId
+		_, err := s.nfsLocalFilestoreClient.CreateFileStore(ctx, &nfsapi.TCreateFileStoreRequest{
+			FileSystemId: localFsId,
+			CloudId:      localFsArgs.ParentId,
+			FolderId:     localFsArgs.ParentId,
+			BlockSize:    4096,
+			BlocksCount:  localFsArgs.Size / 4096,
+		})
+		if err != nil {
+			return err
 		}
 
-		return fmt.Errorf("failed to start NFS endpoint: %w", err)
+		_, err = s.nfsLocalClient.StartEndpoint(ctx, &nfsapi.TStartEndpointRequest{
+			Endpoint: &nfsapi.TEndpointConfig{
+				SocketPath:       filepath.Join(endpointDir, nfsSocketName),
+				FileSystemId:     fmt.Sprintf("%s#%s", localFsId, localFsAliasId),
+				ClientId:         fmt.Sprintf("%s-%s", s.clientId, instanceId),
+				VhostQueuesCount: 8,
+				Persistent:       true,
+			},
+		})
+
+		if err != nil {
+			if s.IsGrpcTimeoutError(err, true /* nfs */) {
+				s.nfsLocalClient.StopEndpoint(ctx, &nfsapi.TStopEndpointRequest{
+					SocketPath: filepath.Join(endpointDir, nfsSocketName),
+				})
+			}
+
+			s.nfsLocalFilestoreClient.DestroyFileStore(ctx, &nfsapi.TDestroyFileStoreRequest{
+				FileSystemId: fmt.Sprintf("%s-%s", filesystemId, instanceId),
+			})
+
+			return fmt.Errorf("failed to start NFS endpoint: %w", err)
+		}
+
+	} else {
+		_, err := nfsClient.StartEndpoint(ctx, &nfsapi.TStartEndpointRequest{
+			Endpoint: &nfsapi.TEndpointConfig{
+				SocketPath:       filepath.Join(endpointDir, nfsSocketName),
+				FileSystemId:     filesystemId,
+				ClientId:         fmt.Sprintf("%s-%s", s.clientId, instanceId),
+				VhostQueuesCount: 8,
+				Persistent:       true,
+			},
+		})
+		if err != nil {
+			if s.IsGrpcTimeoutError(err, true /* nfs */) {
+				nfsClient.StopEndpoint(ctx, &nfsapi.TStopEndpointRequest{
+					SocketPath: filepath.Join(endpointDir, nfsSocketName),
+				})
+			}
+
+			return fmt.Errorf("failed to start NFS endpoint: %w", err)
+		}
 	}
 
 	return s.createDummyImgFile(endpointDir)

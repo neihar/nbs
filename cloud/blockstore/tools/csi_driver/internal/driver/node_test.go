@@ -34,6 +34,7 @@ func doTestPublishUnpublishVolumeForKubevirt(t *testing.T, backend string, devic
 	nbsClient := mocks.NewNbsClientMock()
 	nfsClient := mocks.NewNfsEndpointClientMock()
 	nfsLocalClient := mocks.NewNfsEndpointClientMock()
+	nfsLocalFilestoreClient := mocks.NewNfsClientMock()
 	mounter := csimounter.NewMock()
 
 	ctx := context.Background()
@@ -73,6 +74,7 @@ func doTestPublishUnpublishVolumeForKubevirt(t *testing.T, backend string, devic
 		nbsClient,
 		nfsClient,
 		nfsLocalClient,
+		nfsLocalFilestoreClient,
 		mounter,
 		[]string{},
 		false,
@@ -223,6 +225,7 @@ func doTestStagedPublishUnpublishVolumeForKubevirt(t *testing.T, backend string,
 	nbsClient := mocks.NewNbsClientMock()
 	nfsClient := mocks.NewNfsEndpointClientMock()
 	nfsLocalClient := mocks.NewNfsEndpointClientMock()
+	nfsLocalFilestoreClient := mocks.NewNfsClientMock()
 	mounter := csimounter.NewMock()
 
 	ctx := context.Background()
@@ -267,6 +270,7 @@ func doTestStagedPublishUnpublishVolumeForKubevirt(t *testing.T, backend string,
 		nbsClient,
 		nfsClient,
 		nfsLocalClient,
+		nfsLocalFilestoreClient,
 		mounter,
 		[]string{},
 		false,
@@ -492,6 +496,7 @@ func TestPublishUnpublishDiskForInfrakuber(t *testing.T) {
 		nbsClient,
 		nil,
 		nil, // nfsLocalClient
+		nil, // nfsLocalFilestoreClient
 		mounter,
 		[]string{"grpid"},
 		true,
@@ -649,6 +654,7 @@ func TestPublishUnpublishDeviceForInfrakuber(t *testing.T) {
 		nbsClient,
 		nil,
 		nil, // nfsLocalClient
+		nil, // nfsLocalFilestoreClient
 		mounter,
 		[]string{},
 		false,
@@ -804,6 +810,7 @@ func TestGetVolumeStatCapabilitiesWithoutVmMode(t *testing.T) {
 		nbsClient,
 		nil,
 		nil, // nfsLocalClient
+		nil, // nfsLocalFilestoreClient
 		mounter,
 		[]string{},
 		false,
@@ -872,6 +879,7 @@ func TestGetVolumeStatCapabilitiesWithVmMode(t *testing.T) {
 		nbsClient,
 		nil,
 		nil, // nfsLocalClient
+		nil, // nfsLocalFilestoreClient
 		mounter,
 		[]string{},
 		false,
@@ -930,6 +938,7 @@ func TestPublishDeviceWithReadWriteManyModeIsNotSupportedWithNBS(t *testing.T) {
 		nbsClient,
 		nil,
 		nil, // nfsLocalClient
+		nil, // nfsLocalFilestoreClient
 		mounter,
 		[]string{},
 		false,
@@ -983,6 +992,7 @@ func TestGrpcTimeoutForIKubevirt(t *testing.T) {
 	nbsClient := mocks.NewNbsClientMock()
 	nfsClient := mocks.NewNfsEndpointClientMock()
 	nfsLocalClient := mocks.NewNfsEndpointClientMock()
+	nfsLocalFilestoreClient := mocks.NewNfsClientMock()
 	mounter := csimounter.NewMock()
 
 	ctx := context.Background()
@@ -1012,6 +1022,7 @@ func TestGrpcTimeoutForIKubevirt(t *testing.T) {
 		nbsClient,
 		nfsClient,
 		nfsLocalClient,
+		nfsLocalFilestoreClient,
 		mounter,
 		[]string{},
 		false,
@@ -1099,7 +1110,8 @@ func TestGrpcTimeoutForInfrakuber(t *testing.T) {
 		make(LocalFilestoreOverrideMap),
 		nbsClient,
 		nil,
-		nil,
+		nil, // nfsLocalClient
+		nil, // nfsLocalFilestoreClient
 		mounter,
 		[]string{},
 		false,
