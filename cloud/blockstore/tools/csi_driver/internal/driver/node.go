@@ -1200,17 +1200,39 @@ func (s *nodeService) nodeUnstageVhostSocket(
 			return fmt.Errorf("failed to stop nbs endpoint: %w", err)
 		}
 	} else if stageData.Backend == "nfs" {
-		nfsClient := s.getNfsClient(nbsId)
+		if stageData.IsLocalFs {
+			if s.nfsLocalClient == nil || s.nfsLocalFilestoreClient == nil {
+				return fmt.Errorf("NFS local client wasn't created")
+			}
 
-		if nfsClient == nil {
-			return fmt.Errorf("NFS client wasn't created")
-		}
+			socketPath := filepath.Join(stageData.RealStagePath, nfsSocketName)
+			_, err := s.nfsLocalClient.StopEndpoint(ctx, &nfsapi.TStopEndpointRequest{
+				SocketPath: socketPath,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to stop local nfs endpoint [%s]: %w", socketPath, err)
+			}
 
-		_, err := nfsClient.StopEndpoint(ctx, &nfsapi.TStopEndpointRequest{
-			SocketPath: filepath.Join(stageData.RealStagePath, nfsSocketName),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to stop nfs endpoint (%T): %w", nfsClient, err)
+			localFsId := fmt.Sprintf("%s-%s", nbsId, stageData.InstanceId)
+			_, err = s.nfsLocalFilestoreClient.DestroyFileStore(ctx, &nfsapi.TDestroyFileStoreRequest{
+				FileSystemId: localFsId,
+			})
+			if err != nil {
+				return fmt.Errorf("Failed to destroy local filestore [%s]: %w", localFsId, err)
+			}
+		} else {
+			nfsClient := s.getNfsClient(nbsId)
+
+			if nfsClient == nil {
+				return fmt.Errorf("NFS client wasn't created")
+			}
+
+			_, err := nfsClient.StopEndpoint(ctx, &nfsapi.TStopEndpointRequest{
+				SocketPath: filepath.Join(stageData.RealStagePath, nfsSocketName),
+			})
+			if err != nil {
+				return fmt.Errorf("failed to stop nfs endpoint (%T): %w", nfsClient, err)
+			}
 		}
 	}
 
