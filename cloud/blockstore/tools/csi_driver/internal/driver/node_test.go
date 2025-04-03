@@ -426,7 +426,7 @@ func TestStagedPublishUnpublishFilestoreForKubevirtLegacy(t *testing.T) {
 	doTestStagedPublishUnpublishVolumeForKubevirt(t, "nfs", nil, false, false)
 }
 
-func TestStagedPublishUnpublishLocalFilestoreForKubevirtLegacy(t *testing.T) {
+func TestStagedPublishUnpublishLocalFilestoreOverrideForKubevirtLegacy(t *testing.T) {
 	doTestStagedPublishUnpublishVolumeForKubevirt(t, "nfs", nil, false, true)
 }
 
@@ -443,7 +443,7 @@ func TestStagedPublishUnpublishFilestoreForKubevirt(t *testing.T) {
 	doTestStagedPublishUnpublishVolumeForKubevirt(t, "nfs", nil, true, false)
 }
 
-func TestStagedPublishUnpublishLocalFilestoreForKubevirt(t *testing.T) {
+func TestStagedPublishUnpublishLocalFilestoreOverrideForKubevirt(t *testing.T) {
 	doTestStagedPublishUnpublishVolumeForKubevirt(t, "nfs", nil, true, true)
 }
 
@@ -1159,4 +1159,130 @@ func TestGrpcTimeoutForInfrakuber(t *testing.T) {
 		VolumeContext:     volumeContext,
 	})
 	require.Error(t, err)
+}
+
+func TestStagedPublishUnpublishLocalFilestoreForKubevirt(t *testing.T) {
+	tempDir := t.TempDir()
+
+	nbsClient := mocks.NewNbsClientMock()
+	nfsClient := mocks.NewNfsEndpointClientMock()
+	nfsLocalClient := mocks.NewNfsEndpointClientMock()
+	nfsLocalFilestoreClient := mocks.NewNfsClientMock()
+	mounter := csimounter.NewMock()
+
+	ctx := context.Background()
+	nodeId := "testNodeId"
+	clientId := "testClientId"
+	podId := "test-pod-id-13"
+	instanceId := "testInstanceId"
+	actualClientId := "testClientId-" + instanceId
+	diskId := "test-disk-id-42"
+	volumeId := diskId + "#" + instanceId
+	stagingTargetPath := filepath.Join(tempDir, "testStagingTargetPath")
+	socketsDir := filepath.Join(tempDir, "sockets")
+	sourcePath := filepath.Join(socketsDir, instanceId, diskId)
+	targetPath := filepath.Join(tempDir, "pods", podId, "volumes", diskId, "mount")
+	targetFsPathPattern := filepath.Join(tempDir, "pods/([a-z0-9-]+)/volumes/([a-z0-9-]+)/mount")
+	nfsSocketPath := filepath.Join(sourcePath, "nfs.sock")
+
+	localFsOverrides := make(LocalFilestoreOverrideMap)
+
+	nodeService := newNodeService(
+		nodeId,
+		clientId,
+		true, // vmMode
+		socketsDir,
+		targetFsPathPattern,
+		"", // targetBlkPathPattern
+		localFsOverrides,
+		nbsClient,
+		nfsClient,
+		nfsLocalClient,
+		nfsLocalFilestoreClient,
+		mounter,
+		[]string{},
+		false,
+	)
+
+	accessMode := csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER
+
+	volumeCapability := csi.VolumeCapability{
+		AccessType: &csi.VolumeCapability_Mount{
+			Mount: &csi.VolumeCapability_MountVolume{},
+		},
+		AccessMode: &csi.VolumeCapability_AccessMode{
+			Mode: accessMode,
+		},
+	}
+
+	volumeContext := map[string]string{
+		backendVolumeContextKey: "nfs",
+		instanceIdKey:           instanceId,
+	}
+
+	nfsLocalClient.On("StartEndpoint", ctx, &nfs.TStartEndpointRequest{
+		Endpoint: &nfs.TEndpointConfig{
+			SocketPath:       nfsSocketPath,
+			FileSystemId:     diskId,
+			ClientId:         actualClientId,
+			VhostQueuesCount: 8,
+			Persistent:       true,
+		},
+	}).Return(&nfs.TStartEndpointResponse{}, nil)
+
+	_, err := nodeService.NodeStageVolume(ctx, &csi.NodeStageVolumeRequest{
+		VolumeId:          volumeId,
+		StagingTargetPath: stagingTargetPath,
+		VolumeCapability:  &volumeCapability,
+		VolumeContext:     volumeContext,
+	})
+	require.NoError(t, err)
+
+	fileInfo, err := os.Stat(sourcePath)
+	assert.False(t, os.IsNotExist(err))
+	assert.True(t, fileInfo.IsDir())
+	assert.Equal(t, fs.FileMode(0755), fileInfo.Mode().Perm())
+
+	fileInfo, err = os.Stat(filepath.Join(sourcePath, "disk.img"))
+	assert.False(t, os.IsNotExist(err))
+	assert.False(t, fileInfo.IsDir())
+	assert.Equal(t, fs.FileMode(0644), fileInfo.Mode().Perm())
+
+	mounter.On("IsMountPoint", targetPath).Return(false, nil)
+	mounter.On("Mount", sourcePath, targetPath, "", []string{"bind"}).Return(nil)
+
+	_, err = nodeService.NodePublishVolume(ctx, &csi.NodePublishVolumeRequest{
+		VolumeId:          volumeId,
+		StagingTargetPath: stagingTargetPath,
+		TargetPath:        targetPath,
+		VolumeCapability:  &volumeCapability,
+		VolumeContext:     volumeContext,
+	})
+	require.NoError(t, err)
+
+	fileInfo, err = os.Stat(targetPath)
+	assert.False(t, os.IsNotExist(err))
+	assert.True(t, fileInfo.IsDir())
+	assert.Equal(t, fs.FileMode(0775), fileInfo.Mode().Perm())
+
+	mounter.On("CleanupMountPoint", targetPath).Return(nil)
+
+	_, err = nodeService.NodeUnpublishVolume(ctx, &csi.NodeUnpublishVolumeRequest{
+		VolumeId:   volumeId,
+		TargetPath: targetPath,
+	})
+	require.NoError(t, err)
+
+	nfsLocalClient.On("StopEndpoint", ctx, &nfs.TStopEndpointRequest{
+		SocketPath: nfsSocketPath,
+	}).Return(&nfs.TStopEndpointResponse{}, nil)
+
+	_, err = nodeService.NodeUnstageVolume(ctx, &csi.NodeUnstageVolumeRequest{
+		VolumeId:          volumeId,
+		StagingTargetPath: stagingTargetPath,
+	})
+	require.NoError(t, err)
+
+	_, err = os.Stat(filepath.Join(socketsDir, instanceId))
+	assert.True(t, os.IsNotExist(err))
 }
