@@ -25,6 +25,25 @@ on:
         required: false
         #default: 'cloud/tasks/'
         default: 'cloud/blockstore/,cloud/filestore/,cloud/disk_manager/,cloud/tasks/,cloud/storage/'
+      vm_preset:
+        type: choice
+        default: "default"
+        description: "VM preset"
+        options:
+          - 128vcpu-512gb
+          - 96vcpu-384gb
+          - 80vcpu-320gb
+          - 64vcpu-256gb
+          - 32vcpu-128gb
+          - default
+      vm_platform:
+        type: choice
+        default: "default"
+        description: "VM platform"
+        options:
+          - cpu-e2
+          - cpu-d3
+          - default
       comment:
         description: 'Comment'
         type: string
@@ -45,6 +64,8 @@ jobs:
       build_preset: relwithdebinfo
       cache_update_build: true
       cache_update_tests: false
+      vm_preset: ${{ inputs.vm_preset }}
+      vm_platform: ${{ inputs.vm_platform }}
       sleep_after_tests: 1
   build_schedule:
     name: Build/test x86_64 using YA (relwithdebinfo) (schedule)

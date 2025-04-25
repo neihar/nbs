@@ -51,6 +51,26 @@ on:
         type: string
         default: "0"
         description: "Amount of seconds to sleep after tests"
+      vm_preset:
+        type: choice
+        default: "default"
+        description: "VM preset"
+        options:
+          - 128vcpu-512gb
+          - 96vcpu-384gb
+          - 80vcpu-320gb
+          - 64vcpu-256gb
+          - 32vcpu-128gb
+          - default
+      vm_platform:
+        type: choice
+        default: "default"
+        description: "VM platform"
+        options:
+          - cpu-e2
+          - cpu-d3
+          - default
+
   workflow_call:
     inputs:
       build_target:
@@ -105,6 +125,14 @@ on:
         type: string
         default: "no"
         description: "Allow downgrade of VM"
+      vm_preset:
+        type: string
+        default: ""
+        description: "VM preset"
+      vm_platform:
+        type: string
+        default: ""
+        description: "VM platform"
 
 env:
   allow_downgrade: ${{ vars.GLOBAL_ALLOW_DOWNGRADE == 'yes' || ((github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'allow-downgrade')) || inputs.allow_downgrade == 'yes') }}
@@ -160,8 +188,8 @@ jobs:
           token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
           vm_parent_id: ${{ vars.NEBIUS_PARENT_ID }}
           vm_name: ${{ github.event.pull_request.number && format('pr-{0}{1}-{2}-{3}', github.event.pull_request.number, inputs.vm_name_suffix, github.run_id, github.run_attempt) || format('run-{0}-{1}', github.run_id, github.run_attempt) }}
-          vm_platform_id: ${{ vars.NEBIUS_PLATFORM_ID }}
-          vm_preset: ${{ vars.NEBIUS_VM_PRESET }}
+          vm_platform_id: ${{ inputs.vm_platform != 'default' && inputs.vm_platform || vars.NEBIUS_PLATFORM_ID }}
+          vm_preset: ${{ inputs.vm_preset != 'default' && inputs.vm_preset || vars.NEBIUS_VM_PRESET }}
           vm_disk_type: ${{ inputs.disk_type || 'network-ssd-nonreplicated' }}
           vm_disk_size: 1023
           vm_subnet: ${{ vars.NEBIUS_SUBNET_ID }}
