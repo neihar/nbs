@@ -122,7 +122,14 @@ linters:
   settings:
     lll:
       line-length: 80
-
+formatters:
+  enable:
+    # Do not work for now
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
 output:
   formats:
     html:
