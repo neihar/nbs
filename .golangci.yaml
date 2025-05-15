@@ -123,3 +123,7 @@ linters:
     lll:
       line-length: 80
 
+output:
+  formats:
+    html:
+      path: "golangci-lint-report.html"
