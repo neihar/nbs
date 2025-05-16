@@ -21,13 +21,8 @@ linters:
     - bodyclose
     - canonicalheader
     - containedctx
-    - contextcheck
     - copyloopvar
-    - cyclop
-    - decorder
-    - depguard
     - dogsled
-    - dupl
     - dupword
     - durationcheck
     - err113
@@ -35,7 +30,6 @@ linters:
     - errchkjson
     - errname
     - errorlint
-    - exhaustive
     - exhaustruct
     - exptostd
     - fatcontext
@@ -47,22 +41,16 @@ linters:
     - gochecknoglobals
     - gochecknoinits
     - gochecksumtype
-    - gocognit
     - goconst
     - gocritic
-    - gocyclo
     - godot
-    - godox
     - goheader
     - gomoddirectives
-    - gomodguard
     - goprintffuncname
     - gosec
     - gosmopolitan
     - govet
     - grouper
-    - iface
-    - importas
     - inamedparam
     - ineffassign
     - interfacebloat
@@ -81,16 +69,12 @@ linters:
     - nilerr
     - nilnesserr
     - nilnil
-    - nlreturn
     - noctx
-    - nolintlint
     - nonamedreturns
     - nosprintfhostport
-    - paralleltest
     - perfsprint
     - prealloc
     - predeclared
-    - promlinter
     - protogetter
     - reassign
     - recvcheck
@@ -114,6 +98,25 @@ linters:
     - usetesting
     - varnamelen
     - wastedassign
+  disable:
+    - contextcheck
+    - cyclop
+    - decorder
+    - depguard
+    - dupl
+    - exhaustive
+    - ginkgolinter
+    - gocognit
+    - gocyclo
+    - godox
+    - gomodguard
+    - grouper
+    - iface
+    - importas
+    - nlreturn
+    - nolintlint
+    - paralleltest
+    - promlinter
     - whitespace
     - wrapcheck
     - wsl
@@ -121,6 +124,14 @@ linters:
   settings:
     lll:
       line-length: 80
+    tagliatelle:
+      case:
+        rules:
+          json: camel
+    testifylint:
+      enable-all: true
+    whitespace:
+      multi-func: true
 formatters:
   enable:
     # Do not work for now
