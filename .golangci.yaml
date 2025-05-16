@@ -88,7 +88,6 @@ linters:
     - tagliatelle
     - testableexamples
     - testifylint
-    - testpackage
     - thelper
     - tparallel
     - unconvert
@@ -117,6 +116,7 @@ linters:
     - nolintlint
     - paralleltest
     - promlinter
+    - testpackage
     - whitespace
     - wrapcheck
     - wsl
