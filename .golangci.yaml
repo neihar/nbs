@@ -43,7 +43,6 @@ linters:
     - forcetypeassert
     - funcorder
     - funlen
-    - ginkgolinter
     - gocheckcompilerdirectives
     - gochecknoglobals
     - gochecknoinits
