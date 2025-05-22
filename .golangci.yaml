@@ -130,8 +130,9 @@ linters:
           json: camel
     testifylint:
       enable-all: true
-    whitespace:
-      multi-func: true
+    staticcheck:
+      checks: ["all"]
+      initialisms: ["ID"]
 formatters:
   enable:
     # Do not work for now
