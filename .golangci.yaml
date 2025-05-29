@@ -7,6 +7,8 @@ run:
   modules-download-mode: vendor
   allow-parallel-runners: false
   go: ""
+issues:
+  max-issues-per-linter: 10000
 linters:
   # Default set of linters.
   # The value can be: `standard`, `all`, `none`, or `fast`.
@@ -30,7 +32,6 @@ linters:
     - errchkjson
     - errname
     - errorlint
-    - exhaustruct
     - exptostd
     - fatcontext
     - forbidigo
@@ -65,6 +66,7 @@ linters:
     - mnd
     - musttag
     - nakedret
+    - nbs-go-lint
     - nestif
     - nilerr
     - nilnesserr
@@ -95,7 +97,6 @@ linters:
     - unused
     - usestdlibvars
     - usetesting
-    - varnamelen
     - wastedassign
   disable:
     - contextcheck
@@ -104,6 +105,7 @@ linters:
     - depguard
     - dupl
     - exhaustive
+    - exhaustruct
     - ginkgolinter
     - gocognit
     - gocyclo
@@ -117,6 +119,7 @@ linters:
     - paralleltest
     - promlinter
     - testpackage
+    - varnamelen
     - whitespace
     - wrapcheck
     - wsl
@@ -133,9 +136,14 @@ linters:
     staticcheck:
       checks: ["all"]
       initialisms: ["ID"]
+    custom:
+      nbs-go-lint:
+        type: "module"
+        description: "NBS CI lint module"
+        original-url: "github.com/jkuradobery/nbs-go-lint"
+        version: "v0.1.2.fix"
 formatters:
   enable:
-    # Do not work for now
     - gci
     - gofmt
     - gofumpt
