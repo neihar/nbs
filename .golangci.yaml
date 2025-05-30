@@ -23,7 +23,6 @@ linters:
     - bodyclose
     - canonicalheader
     - containedctx
-    - copyloopvar
     - dogsled
     - dupword
     - durationcheck
@@ -100,6 +99,7 @@ linters:
     - wastedassign
   disable:
     - contextcheck
+    - copyloopvar
     - cyclop
     - decorder
     - depguard
@@ -136,6 +136,11 @@ linters:
     staticcheck:
       checks: ["all"]
       initialisms: ["ID"]
+    revive:
+      enable-all-rules: true
+      rules:
+        - name: "exported"
+          disabled: true
     custom:
       nbs-go-lint:
         type: "module"
@@ -153,3 +158,4 @@ output:
   formats:
     html:
       path: "golangci-lint-report.html"
+
