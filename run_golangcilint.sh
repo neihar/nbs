@@ -81,7 +81,7 @@ run_lint bash -c 'chown "$(id -u):$(id -g)" ${LOCAL_WORK_DIR}/golangci-lint-repo
 exit_code=$?
 SOURCE_UPPER_DIR="$(upper_dir "${SOURCE_VOLUME}")"
 cp "${SOURCE_UPPER_DIR}/golangci-lint-report.html" .
-cp "${SOURCE_UPPER_DIR}/golangci-lint-report.txt" .
+cp "${SOURCE_UPPER_DIR}/golangci-lint-report.xml" .
 if [ $exit_code -ne 0 ]; then
   echo "Linter failed"
   exit 1
