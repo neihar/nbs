@@ -39,6 +39,8 @@ function docker_run_with_volumes(){
   --volume "${YA_VOLUME}:${LOCAL_YA_PATH}" \
   --workdir "${WORK_DIR}" \
   --env CGO_CFLAGS="-I${WORK_DIR}/contrib/libs/zstd/include" \
+  --env GOPROXY=direct \
+  --env  GOSUMDB=off \
   --env LOCAL_WORK_DIR="${WORK_DIR}" \
   --env UID="$(id -u)" \
   --env GID="$(id -g)" \
@@ -51,7 +53,7 @@ function run_lint() {
 }
 
 function build_protos(){
-  run_lint ./ya make --add-result=.pb.go "$@"
+  run_lint ./ya make --replace-result --add-result=.pb.go "$@"
 }
 
 create_overlay_volume "${SOURCE_VOLUME}" "$(pwd)"

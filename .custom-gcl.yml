@@ -3,4 +3,4 @@ name: "nbs-go-lint"
 plugins:
   - module: "github.com/jkuradobery/nbs-go-lint"
     import: "github.com/jkuradobery/nbs-go-lint"
-    version: "v0.1.2.fix"
+    version: "v0.1.3"
