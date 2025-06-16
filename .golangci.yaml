@@ -138,6 +138,19 @@ linters:
           disabled: true
         - name: "cognitive-complexity"
           disabled: true
+        - name: "cyclomatic"
+          disabled: true
+        - name: "confusing-naming" # We explicitly allow same names for public and private methods
+          disabled: true
+        - name: "line-length-limit" # We use lll for line length
+          disabled: true
+        - name: "import-shadowing" # We allow import shadowing explicitly
+          disabled: true
+        - name: "add-constant" # Too many noise for now
+          disabled: true
+        - name: "import-alias-naming"
+          arguments:
+            - "^[a-z][a-z0-9_]+$"
     custom:
       nbs-go-lint:
         type: "module"
