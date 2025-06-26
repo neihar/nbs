@@ -14,5 +14,5 @@ type CellSelector interface {
 		req *disk_manager.CreateDiskRequest,
 	) string
 
-	IsCellOfZone(cellID string, zoneID string) bool
+	GetCells(zoneID string) []string
 }
