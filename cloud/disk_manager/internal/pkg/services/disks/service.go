@@ -3,7 +3,6 @@ package disks
 import (
 	"context"
 	"math"
-	"slices"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -186,7 +185,7 @@ func (s *service) getZoneIDForExistingDisk(
 	}
 
 	if diskMeta.ZoneID != diskID.ZoneId &&
-		!slices.Contains(s.cellSelector.GetCells(diskID.ZoneId), diskMeta.ZoneID) {
+		!s.cellSelector.IsCellOfZone(diskMeta.ZoneID, diskID.ZoneId) {
 		return "", errors.NewInvalidArgumentError(
 			"provided zone ID %v does not match with an actual zone ID %v",
 			diskID.ZoneId,
