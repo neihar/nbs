@@ -89,6 +89,7 @@ constexpr TDuration Seconds(int s)
     xxx(MaxBurstTime,                TDuration,             Seconds(0)        )\
     xxx(RdmaClientEnabled,           bool,                  false             )\
     xxx(UseFakeRdmaClient,           bool,                  false             )\
+    xxx(DisableClientThrottlers,     bool,                  false             )\
     xxx(EndpointStorageType,                                                   \
         NCloud::NProto::EEndpointStorageType,                                  \
         NCloud::NProto::ENDPOINT_STORAGE_KEYRING                              )\
@@ -108,6 +109,8 @@ constexpr TDuration Seconds(int s)
     xxx(VhostDiscardEnabled,         bool,                   false            )\
     xxx(MaxZeroBlocksSubRequestSize, ui32,                   0                )\
     xxx(CellsState,            NProto::ECellsState,   NProto::CELLS_STATE_OFF )
+    xxx(VhostPteFlushByteThreshold,  ui64,                   0                )\
+    xxx(AutomaticNbdDeviceManagement,bool,                   false            )
 // BLOCKSTORE_SERVER_CONFIG
 
 #define BLOCKSTORE_SERVER_DECLARE_CONFIG(name, type, value)                    \

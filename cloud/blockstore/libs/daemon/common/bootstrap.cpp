@@ -358,6 +358,8 @@ void TBootstrapBase::Init()
         = Configs->EndpointConfig->GetClientConfig();
     sessionManagerOptions.HostProfile = Configs->HostPerformanceProfile;
     sessionManagerOptions.TemporaryServer = Configs->Options->TemporaryServer;
+    sessionManagerOptions.DisableClientThrottler =
+        Configs->ServerConfig->GetDisableClientThrottlers();
 
     if (!KmsKeyProvider) {
         KmsKeyProvider = CreateKmsKeyProviderStub();
@@ -458,15 +460,13 @@ void TBootstrapBase::Init()
                 && !Configs->Options->TemporaryServer)
         {
             vhostEndpointListener = CreateExternalVhostEndpointListener(
+                Configs->ServerConfig,
                 Logging,
                 ServerStats,
                 Executor,
-                Configs->ServerConfig->GetVhostServerPath(),
                 Configs->Options->SkipDeviceLocalityValidation
                     ? TString {}
                     : FQDNHostName(),
-                Configs->ServerConfig->GetSocketAccessMode(),
-                Configs->ServerConfig->GetVhostServerTimeoutAfterParentExit(),
                 RdmaClient && RdmaClient->IsAlignedDataEnabled(),
                 std::move(vhostEndpointListener));
 
@@ -563,6 +563,8 @@ void TBootstrapBase::Init()
         .ClientConfig = Configs->EndpointConfig->GetClientConfig(),
         .NbdSocketSuffix = Configs->ServerConfig->GetNbdSocketSuffix(),
         .NbdDevicePrefix = Configs->ServerConfig->GetNbdDevicePrefix(),
+        .AutomaticNbdDeviceManagement =
+            Configs->ServerConfig->GetAutomaticNbdDeviceManagement(),
     };
 
     NBD::IDeviceFactoryPtr nbdDeviceFactory;
@@ -592,9 +594,7 @@ void TBootstrapBase::Init()
         nbdDeviceFactory = NBD::CreateNetlinkDeviceFactory(
             Logging,
             Configs->ServerConfig->GetNbdRequestTimeout(),
-            Configs->ServerConfig->GetNbdConnectionTimeout(),
-            true   // reconfigure
-        );
+            Configs->ServerConfig->GetNbdConnectionTimeout());
     }
 
     // The only case we want kernel to retry requests is when the socket is dead
@@ -620,6 +620,7 @@ void TBootstrapBase::Init()
         std::move(endpointListeners),
         std::move(nbdDeviceFactory),
         NbdErrorHandlerMap,
+        Service,
         std::move(endpointManagerOptions));
 
     STORAGE_INFO("EndpointManager initialized");
