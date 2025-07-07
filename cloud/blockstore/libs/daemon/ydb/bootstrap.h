@@ -131,6 +131,9 @@ protected:
 
 private:
     void InitConfigs();
+    void InitDiskAgentBackend();
+    void InitFileIOServiceProvider(std::function<IFileIOServicePtr()> factory);
+    void InitLocalStorageProvider(TString submissionThreadName);
 };
 
 }   // namespace NCloud::NBlockStore::NServer
