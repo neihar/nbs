@@ -36,6 +36,7 @@ message TChecksumFlags
 
 ////////////////////////////////////////////////////////////////////////////////
 
+<<<<<<< HEAD
 enum ECellsState
 {
 <<<<<<< HEAD
@@ -51,6 +52,8 @@ enum ECellsState
 
 ////////////////////////////////////////////////////////////////////////////////
 
+=======
+>>>>>>> 3f2a11cef6... move config parameter (#3859)
 message TServerConfig
 {
     // Host name or address to listen on.
@@ -244,6 +247,7 @@ message TServerConfig
     // each with a size up to MaxZeroBlocksSubRequestSize.
     // Max value for MaxZeroBlocksSubRequestSize is 2 GiB
     optional uint32 MaxZeroBlocksSubRequestSize = 122;
+<<<<<<< HEAD
 
     // If set to a non-zero value, PTEs of the external vhost server backing
     // the guest memory regions for blockdev are flushed (unmapped and mapped
@@ -263,6 +267,8 @@ message TServerConfig
 
     // Enables/Disables Cells feature.
     optional ECellsState CellsState = 127;
+=======
+>>>>>>> 3f2a11cef6... move config parameter (#3859)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
