@@ -380,20 +380,6 @@ void TBootstrapYdb::InitRdmaServer()
         std::move(rdmaConfig));
 }
 
-void TBootstrapYdb::InitFileIOServiceProvider(
-    std::function<IFileIOServicePtr()> factory)
-{
-    const auto& config = *Configs->DiskAgentConfig;
-
-    if (config.GetPathsPerFileIOService()) {
-        FileIOServiceProvider = CreateFileIOServiceProvider(
-            config.GetPathsPerFileIOService(),
-            std::move(factory));
-    } else {
-        FileIOServiceProvider = CreateSingleFileIOServiceProvider(factory());
-    }
-}
-
 void TBootstrapYdb::InitLocalStorageProvider(TString submissionThreadName)
 {
     const auto& config = *Configs->DiskAgentConfig;
@@ -419,7 +405,9 @@ void TBootstrapYdb::InitDiskAgentBackend()
             break;
         case NProto::DISK_AGENT_BACKEND_AIO:
             NvmeManager = CreateNvmeManager(config.GetSecureEraseTimeout());
-            InitFileIOServiceProvider(CreateAIOServiceFactory(config));
+            FileIOServiceProvider = CreateFileIOServiceProvider(
+                config,
+                CreateAIOServiceFactory(config));
             InitLocalStorageProvider("AIO.SQ");
             break;
         case NProto::DISK_AGENT_BACKEND_NULL:
@@ -429,7 +417,9 @@ void TBootstrapYdb::InitDiskAgentBackend()
         case NProto::DISK_AGENT_BACKEND_IO_URING:
         case NProto::DISK_AGENT_BACKEND_IO_URING_NULL:
             NvmeManager = CreateNvmeManager(config.GetSecureEraseTimeout());
-            InitFileIOServiceProvider(CreateIoUringServiceFactory(config));
+            FileIOServiceProvider = CreateFileIOServiceProvider(
+                config,
+                CreateIoUringServiceFactory(config));
             InitLocalStorageProvider("RNG.SQ");
             break;
     }
