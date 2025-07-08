@@ -352,7 +352,7 @@ void TBootstrap::InitRdmaServer(NRdma::TRdmaConfig& config)
 
 void TBootstrap::InitLocalStorageProvider(TString submissionThreadName)
 {
-    auto& config = *Configs->DiskAgentConfig;
+    const auto& config = *Configs->DiskAgentConfig;
 
     LocalStorageProvider = CreateLocalStorageProvider(
         FileIOServiceProvider,
