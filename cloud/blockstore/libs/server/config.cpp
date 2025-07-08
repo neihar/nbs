@@ -107,14 +107,9 @@ constexpr TDuration Seconds(int s)
     xxx(VhostServerTimeoutAfterParentExit, TDuration,       Seconds(60)       )\
     xxx(ChecksumFlags,               NProto::TChecksumFlags, {}               )\
     xxx(VhostDiscardEnabled,         bool,                   false            )\
-<<<<<<< HEAD
     xxx(MaxZeroBlocksSubRequestSize, ui32,                   0                )\
-    xxx(CellsState,            NProto::ECellsState,   NProto::CELLS_STATE_OFF )\
     xxx(VhostPteFlushByteThreshold,  ui64,                   0                )\
     xxx(AutomaticNbdDeviceManagement,bool,                   false            )
-=======
-    xxx(MaxZeroBlocksSubRequestSize, ui32,                   0                )
->>>>>>> 3f2a11cef6... move config parameter (#3859)
 // BLOCKSTORE_SERVER_CONFIG
 
 #define BLOCKSTORE_SERVER_DECLARE_CONFIG(name, type, value)                    \
