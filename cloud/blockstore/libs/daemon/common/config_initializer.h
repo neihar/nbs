@@ -64,7 +64,6 @@ protected:
 
     void SetupDiscoveryPorts(NProto::TDiscoveryServiceConfig& discoveryConfig) const;
     void SetupServerPorts(NProto::TServerConfig& config) const;
-    void SetupGrpcThreadsLimit() const;
 };
 
 }   // namespace NCloud::NBlockStore::NServer

@@ -148,7 +148,7 @@ void TConfigInitializerCommon::InitServerConfig()
     SetupServerPorts(serverConfig);
 
     ServerConfig = std::make_shared<TServerAppConfig>(appConfig);
-    SetupGrpcThreadsLimit();
+    SetGrpcThreadsLimit(ServerConfig->GetGrpcThreadsLimit());
 }
 
 void TConfigInitializerCommon::InitEndpointConfig()
@@ -247,13 +247,6 @@ void TConfigInitializerCommon::SetupServerPorts(
     } else if (Options->TemporaryServer) {
         config.SetUnixSocketPath({});
     }
-}
-
-void TConfigInitializerCommon::SetupGrpcThreadsLimit() const
-{
-    ui32 maxThreads = ServerConfig->GetGrpcThreadsLimit();
-    SetExecutorThreadsLimit(maxThreads);
-    SetDefaultThreadPoolLimit(maxThreads);
 }
 
 }   // namespace NCloud::NBlockStore::NServer
