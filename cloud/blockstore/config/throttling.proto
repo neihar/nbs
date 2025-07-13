@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package NCloud.NBlockStore.NProto;
+
+import "cloud/storage/core/protos/media.proto";
+
+option go_package = "github.com/ydb-platform/nbs/cloud/blockstore/config";
+
+////////////////////////////////////////////////////////////////////////////////
+
+message TVolumePerformanceProfileCoefficients {
+    double MaxReadBandwidth = 1;
+    double MaxPostponedWeight = 3;
+    double ThrottlingEnabled = 4;
+    double MaxReadIops = 5;
+    double BoostTime = 7;
+    double BoostRefillTime = 8;
+    double BoostPercentage = 9;
+    double MaxWriteBandwidth = 10;
+    double MaxWriteIops = 11;
+    double BurstPercentage = 12;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+message TDiskFilter {
+    repeated string CloudIds = 1;                             // OR: any of these clouds (empty = any cloud)
+    repeated string FolderIds = 2;                            // OR: any of these folders (empty = any folder)
+    repeated NCloud.NProto.EStorageMediaKind DiskTypes = 3;   // OR: any of these disk types (empty = any type)
+}
+
+message TSpecificDiskFilter {
+    repeated string DiskIds = 1;  // OR: any of these disks (empty = no disks)
+}
+
+message TThrottlingRule {
+    oneof Selector {
+        TDiskFilter Filter = 1;
+        TSpecificDiskFilter Disks = 2;
+    };
+    TVolumePerformanceProfileCoefficients Coefficients = 3;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+message TThrottlingConfig {
+    uint32 Version = 1;
+    repeated TThrottlingRule Rules = 2;
+}

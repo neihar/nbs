@@ -19,6 +19,7 @@ SRCS(
     spdk.proto
     storage.proto
     ydbstats.proto
+    throttling.proto
 )
 
 PEERDIR(

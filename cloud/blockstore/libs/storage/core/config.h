@@ -692,6 +692,8 @@ public:
 
     [[nodiscard]] ui32 GetMaxCompactionRangesLoadingPerTx() const;
     [[nodiscard]] ui32 GetMaxOutOfOrderCompactionMapChunksInflight() const;
+
+    [[nodiscard]] bool GetThrottlingManagerEnabled() const;
 };
 
 ui64 GetAllocationUnit(
