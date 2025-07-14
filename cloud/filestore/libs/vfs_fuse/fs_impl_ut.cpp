@@ -1,4 +1,5 @@
 #include "fs.h"
+
 #include "cloud/filestore/libs/diagnostics/request_stats.h"
 
 #include <cloud/filestore/libs/client/config.h>
@@ -6,24 +7,22 @@
 #include <cloud/filestore/libs/diagnostics/profile_log.h>
 #include <cloud/filestore/libs/diagnostics/public.h>
 #include <cloud/filestore/libs/service/filestore_test.h>
+#include <cloud/filestore/libs/vfs_fuse/config.h>
+#include <cloud/filestore/libs/vfs_fuse/handle_ops_queue.h>
+#include <cloud/filestore/libs/vfs_fuse/write_back_cache.h>
 
 #include <cloud/storage/core/libs/common/scheduler_test.h>
 #include <cloud/storage/core/libs/common/timer.h>
 #include <cloud/storage/core/libs/diagnostics/logging.h>
 #include <cloud/storage/core/libs/user_stats/counter/user_counter.h>
 
+#include <contrib/libs/fuse/include/fuse_lowlevel.h>
+
 #include <library/cpp/monlib/dynamic_counters/counters.h>
 #include <library/cpp/testing/unittest/registar.h>
 
 #include <util/folder/path.h>
 #include <util/folder/tempdir.h>
-
-#include <contrib/libs/virtiofsd/fuse_lowlevel.h>
-#include <contrib/libs/virtiofsd/fuse_i.h>
-#include <cloud/filestore/libs/vfs_fuse/config.h>
-
-#include <cloud/filestore/libs/vfs_fuse/handle_ops_queue.h>
-#include <cloud/filestore/libs/vfs_fuse/write_back_cache.h>
 
 namespace NCloud::NFileStore::NFuse {
 
@@ -116,6 +115,7 @@ private:
 
     IFileSystemPtr FileSystem;
 };
+
 
 }   // namespace
 
