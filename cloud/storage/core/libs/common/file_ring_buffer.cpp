@@ -272,7 +272,7 @@ private:
         return GetEntry(Header()->ReadPos);
     }
 
-    TEntryInfo GetNextEntry(TEntryInfo e) const
+    TEntryInfo GetNextEntry(const TEntryInfo& e) const
     {
         return e.HasValue()
             ? GetEntry(e.GetNextEntryPos())
