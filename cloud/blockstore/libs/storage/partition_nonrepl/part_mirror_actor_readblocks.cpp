@@ -650,6 +650,13 @@ NProto::TError TMirrorPartitionActor::SplitReadBlocks(
         blockRange,
         record.GetHeaders().GetVolumeRequestId());
 
+    for (const auto& [id, request]: RequestsInProgress.AllRequests()) {
+        if (request.IsWrite && blockRange.Overlaps(request.BlockRange)) {
+            DirtyReadRequestIds.insert(requestIdentityKey);
+            break;
+        }
+    }
+
     LOG_DEBUG(
         ctx,
         TBlockStoreComponents::PARTITION_WORKER,
